@@ -1,0 +1,80 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Brand */
+  --p-primary:        #1a73e8;
+  --p-primary-dark:   #1256b0;
+  --p-primary-light:  #e8f0fe;
+
+  /* Form page */
+  --form-bg-from:     #0e3c7e;
+  --form-bg-to:       #1a73e8;
+
+  /* Sidebar (dark) */
+  --sb-bg:            #111827;
+  --sb-surface:       #1f2937;
+  --sb-border:        #374151;
+  --sb-text:          #f9fafb;
+  --sb-muted:         #9ca3af;
+  --sb-accent:        #3b82f6;
+
+  /* Chat main (light) */
+  --chat-bg:          #f3f4f6;
+  --chat-surface:     #ffffff;
+  --chat-border:      #e5e7eb;
+  --chat-text:        #111827;
+  --chat-muted:       #6b7280;
+  --chat-input-bg:    #ffffff;
+
+  /* Bubbles */
+  --bubble-bot-bg:    #ffffff;
+  --bubble-bot-border:#e5e7eb;
+  --bubble-bot-text:  #111827;
+  --bubble-user-bg:   #1a73e8;
+  --bubble-user-text: #ffffff;
+
+  /* Semantic */
+  --error:            #dc2626;
+  --error-bg:         #fef2f2;
+  --error-border:     #fecaca;
+  --warning-bg:       #fffbeb;
+  --warning-border:   #fde68a;
+  --warning-text:     #92400e;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* Radii */
+  --r-sm:  4px;
+  --r-md:  8px;
+  --r-lg:  14px;
+  --r-xl:  20px;
+  --r-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg: 0 20px 40px rgba(0,0,0,.18), 0 8px 16px rgba(0,0,0,.10);
+
+  /* Transitions */
+  --t-fast:   0.12s ease;
+  --t-normal: 0.22s ease;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
