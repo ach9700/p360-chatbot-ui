@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import TypingIndicator from './TypingIndicator.vue'
-import { sendMessage, MAX_MESSAGE_LENGTH } from '../api/chat.js'
+import { sendMessage, submitFeedback, MAX_MESSAGE_LENGTH } from '../api/chat.js'
 import { renderMarkdown } from '../utils/markdown.js'
 
 const props = defineProps({
@@ -134,6 +134,78 @@ function handleKeydown(e) {
 function botHtml(content) {
   return renderMarkdown(content)
 }
+
+// ── Feedback ─────────────────────────────────────────────────────────────
+const feedbackEnabled   = import.meta.env.VITE_FEEDBACK_ENABLED === 'true'
+const showFeedbackModal = ref(false)
+const feedRating        = ref(0)
+const feedHover         = ref(0)
+const feedComment       = ref('')
+const feedSubmitting    = ref(false)
+
+// ── Toast ────────────────────────────────────────────────────────────────
+const toastVisible = ref(false)
+const toastMsg     = ref('')
+const toastIsError = ref(false)
+let   toastTimer   = null
+
+function showToast(msg, isError = false) {
+  clearTimeout(toastTimer)
+  toastMsg.value     = msg
+  toastIsError.value = isError
+  toastVisible.value = true
+  toastTimer = setTimeout(() => { toastVisible.value = false }, 3500)
+}
+
+// ── Session end ──────────────────────────────────────────────────────────
+const chatEnded = ref(false)
+
+async function closeSession() {
+  showFeedbackModal.value = false
+  chatEnded.value = true
+  // Wait for Vue to flush the DOM so the overlay is painted BEFORE we try to
+  // close the window.  If window.close() succeeds the page goes away; if the
+  // browser blocks it (direct tab) the user sees the "session ended" screen.
+  await nextTick()
+  try { window.close() } catch { /* noop */ }
+}
+
+function openFeedbackModal() {
+  feedRating.value        = 0
+  feedHover.value         = 0
+  feedComment.value       = ''
+  showFeedbackModal.value = true
+}
+
+function closeFeedbackModal() {
+  showFeedbackModal.value = false
+}
+
+async function doSubmitFeedback() {
+  if (!feedRating.value) return
+
+  // No conversation started yet — just end the session quietly.
+  if (!conversationId.value) {
+    closeSession()
+    return
+  }
+
+  feedSubmitting.value = true
+  try {
+    await submitFeedback({
+      conversation_id: conversationId.value,
+      rating:          feedRating.value,
+      comment:         feedComment.value.trim(),
+    })
+    showToast('Thank you for your feedback!')
+  } catch {
+    showToast('Failed to submit feedback.', true)
+  } finally {
+    feedSubmitting.value = false
+    // Close the session regardless of API outcome
+    closeSession()
+  }
+}
 </script>
 
 <template>
@@ -185,6 +257,13 @@ function botHtml(content) {
 
       <!-- Footer -->
       <div class="sb-footer">
+        <button v-if="feedbackEnabled" class="end-chat-btn" @click="openFeedbackModal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          End Chat
+        </button>
         <div class="sb-status">
           <span class="status-dot" aria-hidden="true" />
           <span>AI assistant online</span>
@@ -210,6 +289,12 @@ function botHtml(content) {
           <span class="mob-topbar-title">Proctor360 AI</span>
         </div>
         <div class="mob-topbar-spacer" />
+        <button v-if="feedbackEnabled" class="mob-end-btn" aria-label="End chat" @click="openFeedbackModal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </header>
 
       <!-- Escalation banner -->
@@ -343,12 +428,103 @@ function botHtml(content) {
         </div>
       </footer>
     </div>
+
+    <!-- ── Feedback modal, session-ended screen & toast — all in ONE Teleport block ── -->
+    <!-- Using a single Teleport avoids DOM ordering / z-index conflicts between sibling Teleports -->
+    <Teleport to="body">
+      <!-- Session-ended screen: no Transition — render instantly so it can't be lost in animation timing -->
+      <div v-if="chatEnded" class="session-ended" role="status" aria-live="polite">
+        <img src="/logo.png" alt="Proctor360" class="ended-logo" />
+        <h2 class="ended-heading">Your session has ended</h2>
+        <p class="ended-sub">Thank you for using Proctor360 AI Support.<br>You may now close this tab.</p>
+      </div>
+
+      <Transition name="fb-overlay">
+        <div
+          v-if="showFeedbackModal"
+          class="feedback-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fb-heading"
+          @click.self="closeFeedbackModal"
+        >
+          <div class="feedback-modal">
+            <!-- Header -->
+            <div class="fb-header">
+              <h2 id="fb-heading" class="fb-heading">How was your experience?</h2>
+              <button class="fb-close" aria-label="Close" @click="closeFeedbackModal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Star rating -->
+            <div class="fb-stars" role="radiogroup" aria-label="Star rating">
+              <button
+                v-for="n in 5"
+                :key="n"
+                type="button"
+                class="fb-star"
+                :class="{ 'fb-star--filled': n <= (feedHover || feedRating) }"
+                :aria-label="`${n} star${n > 1 ? 's' : ''}`"
+                :aria-pressed="feedRating === n"
+                @click="feedRating = n"
+                @mouseenter="feedHover = n"
+                @mouseleave="feedHover = 0"
+              >
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Comment -->
+            <textarea
+              v-model="feedComment"
+              class="fb-textarea"
+              placeholder="Any additional comments? (optional)"
+              maxlength="500"
+              rows="3"
+            />
+            <p class="fb-char-hint">{{ feedComment.length }} / 500</p>
+
+            <!-- Actions -->
+            <div class="fb-footer">
+              <button type="button" class="fb-skip-btn" @click="closeSession">Skip</button>
+              <button
+                type="button"
+                class="fb-submit-btn"
+                :disabled="!feedRating || feedSubmitting"
+                @click="doSubmitFeedback"
+              >
+                {{ feedSubmitting ? 'Submitting…' : 'Submit Feedback' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Toast -->
+      <Transition name="p360-toast">
+        <div
+          v-if="toastVisible"
+          class="p360-toast"
+          :class="{ 'p360-toast--error': toastIsError }"
+          role="status"
+          aria-live="polite"
+        >
+          {{ toastMsg }}
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 /* ═══════════════════════ Layout root ═══════════════════════ */
 .chat-root {
+  position: relative;
   display: flex;
   height: 100vh;
   height: 100dvh;
@@ -977,4 +1153,268 @@ function botHtml(content) {
 @media (min-width: 768px) {
   .mob-topbar { display: none; }
 }
+
+/* ═══════════════════════ End Chat button ═══════════════════════ */
+.end-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  margin-bottom: 12px;
+  background: #dc2626;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+  transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
+}
+.end-chat-btn:hover {
+  background: #b91c1c;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+}
+.end-chat-btn:active {
+  transform: scale(0.97);
+}
+
+/* Mobile topbar end-chat icon */
+.mob-end-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
+  transition: background 0.12s, box-shadow 0.12s;
+}
+.mob-end-btn:hover {
+  background: #b91c1c;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.5);
+}
+
+/* ═══════════════════════ Session-ended screen ═══════════════════════ */
+.session-ended {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--chat-bg);
+  text-align: center;
+  padding: 32px;
+}
+.ended-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+.ended-heading {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--chat-text);
+  margin: 0;
+}
+.ended-sub {
+  font-size: 0.9375rem;
+  color: var(--chat-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ═══════════════════════ Feedback modal ═══════════════════════ */
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.feedback-modal {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+}
+
+.fb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.fb-heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.fb-close {
+  flex-shrink: 0;
+  margin-left: 8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.fb-close:hover { background: #e5e7eb; color: #111827; }
+
+/* Stars */
+.fb-stars {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.fb-star {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: #d1d5db;
+  line-height: 1;
+  transition: color 0.1s, transform 0.12s;
+}
+.fb-star:hover           { transform: scale(1.18); }
+.fb-star--filled         { color: #f59e0b; }
+
+/* Comment */
+.fb-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  color: #111827;
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.55;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  display: block;
+}
+.fb-textarea:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+.fb-textarea::placeholder { color: #9ca3af; }
+
+.fb-char-hint {
+  text-align: right;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 4px 2px 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Action buttons */
+.fb-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.fb-skip-btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.fb-skip-btn:hover { background: #f9fafb; color: #374151; }
+
+.fb-submit-btn {
+  padding: 9px 22px;
+  border-radius: 10px;
+  border: none;
+  background: #1a73e8;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+}
+.fb-submit-btn:hover:not(:disabled) {
+  background: #1256b0;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.45);
+}
+.fb-submit-btn:disabled { opacity: 0.48; cursor: not-allowed; box-shadow: none; }
+
+/* Modal transition */
+.fb-overlay-enter-active { transition: opacity 0.2s ease; }
+.fb-overlay-leave-active { transition: opacity 0.15s ease; }
+.fb-overlay-enter-from,
+.fb-overlay-leave-to     { opacity: 0; }
+.fb-overlay-enter-active .feedback-modal { animation: fb-card-in 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fb-card-in {
+  from { transform: scale(0.94) translateY(10px); opacity: 0; }
+  to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+/* ═══════════════════════ Toast ══════════════════════════════ */
+.p360-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  padding: 11px 24px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+.p360-toast--error { background: #dc2626; }
+
+.p360-toast-enter-active { transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+.p360-toast-leave-active { transition: all 0.18s ease; }
+.p360-toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+.p360-toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(6px); }
 </style>

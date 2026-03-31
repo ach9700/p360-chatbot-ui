@@ -1,3 +1,13 @@
+/**
+ * Lightweight, XSS-safe Markdown → HTML renderer for AI chat responses.
+ *
+ * Security model:
+ *  1. ALL raw text is HTML-entity-escaped before processing.
+ *  2. The only HTML ever injected comes from our own known-safe regex
+ *     replacements (links, bold, lists, etc.) — never from user/AI content.
+ *  3. Link hrefs are validated to start with https?:// before insertion.
+ */
+
 function escapeHtml(str) {
   return str
     .replace(/&/g, '&amp;')

@@ -70,3 +70,36 @@ export async function sendMessage(payload) {
 
 export { MAX_MESSAGE_LENGTH }
 
+/**
+ * Submit end-of-conversation feedback.
+ * @param {{ conversation_id: string|null, rating: number, comment: string }} payload
+ * @returns {Promise<void>}
+ */
+export async function submitFeedback({ conversation_id, rating, comment }) {
+  const res = await fetch(`${API_BASE}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      conversation_id: String(conversation_id),
+      rating:          Number(rating),
+      // omit comment entirely when empty — backend treats it as optional
+      ...(comment && String(comment).trim() ? { comment: String(comment).trim().slice(0, 500) } : {}),
+    }),
+  })
+
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.error)  detail = String(body.error).slice(0, 200)
+      else if (body?.detail) detail = String(body.detail).slice(0, 200)
+    } catch {
+      // ignore
+    }
+    throw new Error(detail)
+  }
+}
+
