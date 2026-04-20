@@ -226,7 +226,7 @@ async function doSubmitFeedback() {
           <img src="/logo.png" alt="Proctor360" class="sb-logo" />
           <div class="sb-brand-text">
             <span class="sb-title">Proctor360</span>
-            <span class="sb-sub">AI Support</span>
+            <span class="sb-sub">Chat Support</span>
           </div>
         </div>
         <!-- Close btn (mobile only) -->
@@ -266,7 +266,7 @@ async function doSubmitFeedback() {
         </button>
         <div class="sb-status">
           <span class="status-dot" aria-hidden="true" />
-          <span>AI assistant online</span>
+          <span>Chat assistant online</span>
         </div>
         <p class="sb-legal">Powered by Proctor360 AI</p>
       </div>
@@ -286,7 +286,7 @@ async function doSubmitFeedback() {
         </button>
         <div class="mob-topbar-brand">
           <img src="/logo.png" alt="" class="mob-topbar-logo" aria-hidden="true" />
-          <span class="mob-topbar-title">Proctor360 AI</span>
+          <span class="mob-topbar-title">Proctor360 Chat</span>
         </div>
         <div class="mob-topbar-spacer" />
         <button v-if="feedbackEnabled" class="mob-end-btn" aria-label="End chat" @click="openFeedbackModal">

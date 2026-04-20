@@ -137,282 +137,265 @@ function handleSubmit() {
 
 <template>
   <div class="form-page">
-    <div class="blob blob-1" aria-hidden="true" />
-    <div class="blob blob-2" aria-hidden="true" />
 
-    <div class="form-card">
-      <!-- Header -->
-      <div class="card-header">
-        <img src="/logo.png" alt="Proctor360" class="card-logo" />
-        <h1 class="card-title">Proctor360 AI Support</h1>
-        <p class="card-subtitle">Let's get you connected. Tell us a bit about yourself.</p>
-      </div>
+    <!-- ── Left: Form ── -->
+    <div class="form-left">
+      <div class="form-inner">
 
-      <!-- Body -->
-      <form class="card-body" novalidate @submit.prevent="handleSubmit">
-
-        <!-- First + Last Name -->
-        <div class="field-row">
-          <div class="field" :class="{ 'field--err': errors.firstName }">
-            <label for="firstName" class="flabel">
-              First Name <span class="req">*</span>
-            </label>
-            <input
-              id="firstName" v-model="form.firstName" type="text" class="finput"
-              placeholder="Jane" autocomplete="given-name" maxlength="100"
-              :aria-invalid="!!errors.firstName"
-              @input="clearError('firstName')"
-            />
-            <Transition name="ferr">
-              <p v-if="errors.firstName" class="ferror" role="alert">{{ errors.firstName }}</p>
-            </Transition>
-          </div>
-
-          <div class="field" :class="{ 'field--err': errors.lastName }">
-            <label for="lastName" class="flabel">
-              Last Name <span class="req">*</span>
-            </label>
-            <input
-              id="lastName" v-model="form.lastName" type="text" class="finput"
-              placeholder="Smith" autocomplete="family-name" maxlength="100"
-              :aria-invalid="!!errors.lastName"
-              @input="clearError('lastName')"
-            />
-            <Transition name="ferr">
-              <p v-if="errors.lastName" class="ferror" role="alert">{{ errors.lastName }}</p>
-            </Transition>
-          </div>
+        <div class="form-header">
+          <h1 class="form-title">Get Started</h1>
+          <p class="form-subtitle">Tell us a bit about yourself to connect.</p>
         </div>
 
-        <!-- Email -->
-        <div class="field" :class="{ 'field--err': errors.email }">
-          <label for="email" class="flabel">
-            Email Address <span class="req">*</span>
-          </label>
-          <input
-            id="email" v-model="form.email" type="email" class="finput"
-            placeholder="jane@example.com" autocomplete="email" maxlength="254"
-            :aria-invalid="!!errors.email"
-            @input="clearError('email')"
-          />
-          <Transition name="ferr">
-            <p v-if="errors.email" class="ferror" role="alert">{{ errors.email }}</p>
-          </Transition>
-        </div>
+        <form class="form-fields" novalidate @submit.prevent="handleSubmit">
 
-        <!-- Organization combobox -->
-        <div class="field" :class="{ 'field--err': errors.organization }">
-          <label for="org-input" class="flabel">
-            Organization <span class="req">*</span>
-          </label>
-
-          <div class="combo" :class="{ 'combo--open': orgOpen, 'combo--err': errors.organization }">
-            <div class="combo-wrap">
+          <!-- First + Last Name -->
+          <div class="field-row">
+            <div class="field" :class="{ 'field--err': errors.firstName }">
+              <label for="firstName" class="flabel">First Name <span class="req">*</span></label>
               <input
-                id="org-input"
-                ref="orgInputRef"
-                v-model="orgQuery"
-                type="text"
-                class="combo-input"
-                placeholder="Search or select your organization…"
-                autocomplete="off"
-                role="combobox"
-                :aria-expanded="orgOpen"
-                aria-haspopup="listbox"
-                aria-autocomplete="list"
-                :aria-activedescendant="orgHighlight >= 0 ? `opt-${orgHighlight}` : undefined"
-                @focus="openOrg"
-                @blur="closeOrg"
-                @input="orgOpen = true; orgHighlight = -1; errors.organization = ''"
-                @keydown="handleOrgKeydown"
+                id="firstName" v-model="form.firstName" type="text" class="finput"
+                placeholder="Jane" autocomplete="given-name" maxlength="100"
+                :aria-invalid="!!errors.firstName"
+                @input="clearError('firstName')"
               />
-              <button
-                v-if="orgQuery"
-                type="button" class="combo-clear" tabindex="-1" aria-label="Clear"
-                @mousedown.prevent="clearOrg"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-              </button>
-              <button
-                type="button" class="combo-chevron" tabindex="-1" aria-hidden="true"
-                @mousedown.prevent="orgOpen ? closeOrg() : (orgInputRef?.focus(), openOrg())"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
+              <Transition name="ferr">
+                <p v-if="errors.firstName" class="ferror" role="alert">{{ errors.firstName }}</p>
+              </Transition>
             </div>
 
-            <Transition name="dropdown">
-              <ul v-if="orgOpen" ref="orgListRef" class="combo-list" role="listbox" @mousedown.prevent>
-                <template v-for="(org, idx) in filteredOrgs" :key="org">
-                  <!-- Visual divider before "Other" -->
-                  <li v-if="org === 'Other'" class="combo-divider" role="presentation" aria-hidden="true">
-                    <span>Other</span>
-                  </li>
-                  <li
-                    :id="`opt-${idx}`"
-                    class="combo-opt"
-                    :class="{
-                      'combo-opt--hi':  orgHighlight === idx,
-                      'combo-opt--sel': form.organization === org,
-                    }"
-                    role="option"
-                    :aria-selected="form.organization === org"
-                    @click="selectOrg(org)"
-                    @mouseenter="orgHighlight = idx"
-                  >
-                    <svg v-if="form.organization === org" class="opt-check" width="13" height="13" viewBox="0 0 24 24" fill="none">
-                      <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    {{ org }}
-                  </li>
-                </template>
-                <li v-if="!filteredOrgs.length" class="combo-empty">
-                  No match for "{{ orgQuery }}"
-                </li>
-              </ul>
+            <div class="field" :class="{ 'field--err': errors.lastName }">
+              <label for="lastName" class="flabel">Last Name <span class="req">*</span></label>
+              <input
+                id="lastName" v-model="form.lastName" type="text" class="finput"
+                placeholder="Smith" autocomplete="family-name" maxlength="100"
+                :aria-invalid="!!errors.lastName"
+                @input="clearError('lastName')"
+              />
+              <Transition name="ferr">
+                <p v-if="errors.lastName" class="ferror" role="alert">{{ errors.lastName }}</p>
+              </Transition>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="field" :class="{ 'field--err': errors.email }">
+            <label for="email" class="flabel">Email Address <span class="req">*</span></label>
+            <input
+              id="email" v-model="form.email" type="email" class="finput"
+              placeholder="jane@example.com" autocomplete="email" maxlength="254"
+              :aria-invalid="!!errors.email"
+              @input="clearError('email')"
+            />
+            <Transition name="ferr">
+              <p v-if="errors.email" class="ferror" role="alert">{{ errors.email }}</p>
             </Transition>
           </div>
 
-          <Transition name="ferr">
-            <p v-if="errors.organization" class="ferror" role="alert">{{ errors.organization }}</p>
-          </Transition>
-        </div>
+          <!-- Organization combobox -->
+          <div class="field" :class="{ 'field--err': errors.organization }">
+            <label for="org-input" class="flabel">Test Organization <span class="req">*</span></label>
 
-        <!-- Submit -->
-        <button type="submit" class="btn-start" :disabled="isSubmitting">
-          <span>{{ isSubmitting ? 'Starting…' : 'Start Chat' }}</span>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </form>
+            <div class="combo" :class="{ 'combo--open': orgOpen, 'combo--err': errors.organization }">
+              <div class="combo-wrap">
+                <input
+                  id="org-input"
+                  ref="orgInputRef"
+                  v-model="orgQuery"
+                  type="text"
+                  class="combo-input"
+                  placeholder="Search or select your organization…"
+                  autocomplete="off"
+                  role="combobox"
+                  :aria-expanded="orgOpen"
+                  aria-haspopup="listbox"
+                  aria-autocomplete="list"
+                  :aria-activedescendant="orgHighlight >= 0 ? `opt-${orgHighlight}` : undefined"
+                  @focus="openOrg"
+                  @blur="closeOrg"
+                  @input="orgOpen = true; orgHighlight = -1; errors.organization = ''"
+                  @keydown="handleOrgKeydown"
+                />
+                <button
+                  v-if="orgQuery"
+                  type="button" class="combo-clear" tabindex="-1" aria-label="Clear"
+                  @mousedown.prevent="clearOrg"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <button
+                  type="button" class="combo-chevron" tabindex="-1" aria-hidden="true"
+                  @mousedown.prevent="orgOpen ? closeOrg() : (orgInputRef?.focus(), openOrg())"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+
+              <Transition name="dropdown">
+                <ul v-if="orgOpen" ref="orgListRef" class="combo-list" role="listbox" @mousedown.prevent>
+                  <template v-for="(org, idx) in filteredOrgs" :key="org">
+                    <li v-if="org === 'Other'" class="combo-divider" role="presentation" aria-hidden="true">
+                      <span>Other</span>
+                    </li>
+                    <li
+                      :id="`opt-${idx}`"
+                      class="combo-opt"
+                      :class="{
+                        'combo-opt--hi':  orgHighlight === idx,
+                        'combo-opt--sel': form.organization === org,
+                      }"
+                      role="option"
+                      :aria-selected="form.organization === org"
+                      @click="selectOrg(org)"
+                      @mouseenter="orgHighlight = idx"
+                    >
+                      <svg v-if="form.organization === org" class="opt-check" width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      {{ org }}
+                    </li>
+                  </template>
+                  <li v-if="!filteredOrgs.length" class="combo-empty">
+                    No match for "{{ orgQuery }}"
+                  </li>
+                </ul>
+              </Transition>
+            </div>
+
+            <Transition name="ferr">
+              <p v-if="errors.organization" class="ferror" role="alert">{{ errors.organization }}</p>
+            </Transition>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn-start" :disabled="isSubmitting">
+            <span>{{ isSubmitting ? 'Starting…' : 'Start Chat' }}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+        </form>
+      </div>
     </div>
+
+    <!-- ── Right: Animated branding ── -->
+    <div class="form-right">
+      <div class="welcome-content">
+        <div class="welcome-logo-wrap">
+          <img src="/logo.png" alt="Proctor360" class="welcome-logo" />
+        </div>
+        <div class="welcome-org">Proctor360</div>
+        <div class="welcome-tagline">
+          <span class="typing-text">Welcome to Chat Support</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
-/* ── Page / backdrop ── */
+/* ── Split layout ── */
 .form-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  background: linear-gradient(145deg, #0a1f4e 0%, #1a73e8 65%, #3d9df5 100%);
-  position: relative;
+  height: 100vh;
+  width: 100vw;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   overflow: hidden;
 }
 
-.blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  pointer-events: none;
-  opacity: 0.32;
+/* ───────────────────────────────────────────────
+   LEFT SIDE — white, clean
+─────────────────────────────────────────────── */
+.form-left {
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 52px;
+  overflow-y: auto;
 }
-.blob-1 { width: 500px; height: 500px; top: -180px; left: -180px; background: #60a5fa; }
-.blob-2 { width: 420px; height: 420px; bottom: -140px; right: -140px; background: #0a1f4e; }
 
-/* ── Card ── */
-.form-card {
+.form-inner {
   width: 100%;
-  max-width: 510px;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 28px 72px rgba(0,0,0,0.32);
-  /* NOTE: no overflow:hidden — would clip the org dropdown */
-  position: relative;
-  z-index: 1;
-  animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  max-width: 480px;
+  animation: fade-up 0.5s ease-out both;
 }
 
-/* ── Header ── */
-.card-header {
-  background: linear-gradient(145deg, #0a1f4e 0%, #1a73e8 100%);
-  padding: 38px 32px 30px;
-  text-align: center;
-  color: #fff;
-  border-radius: 22px 22px 0 0;  /* replaces card overflow:hidden */
+.form-header {
+  margin-bottom: 36px;
 }
 
-.card-logo {
-  width: 76px;
-  height: 76px;
-  object-fit: contain;
-  margin-bottom: 16px;
-  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.45));
-}
-
-.card-title {
-  font-size: 1.5rem;
+.form-title {
+  font-size: 2rem;
   font-weight: 700;
+  color: #111827;
   letter-spacing: -0.025em;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
 }
 
-.card-subtitle {
-  font-size: 0.9375rem;
-  opacity: 0.84;
-  line-height: 1.55;
+.form-subtitle {
+  font-size: 1rem;
+  color: #6b7280;
+  line-height: 1.6;
 }
 
-/* ── Body ── */
-.card-body {
-  padding: 30px 32px 34px;
+/* ── Form fields ── */
+.form-fields {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
-/* ── Two-col name row ── */
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 16px;
 }
 
-/* ── Fields ── */
-.field { display: flex; flex-direction: column; gap: 5px; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
 
 .flabel {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: #374151;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
 }
+
 .req { color: #dc2626; margin-left: 2px; }
 
 .finput {
-  height: 46px;
+  height: 48px;
   padding: 0 14px;
-  border: 1.5px solid #d1d5db;
-  border-radius: 10px;
-  font-size: 0.9375rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
   font-family: var(--font-sans);
   color: #111827;
   background: #fff;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
   width: 100%;
 }
 .finput::placeholder { color: #9ca3af; }
 .finput:focus {
   border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26,115,232,0.14);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
 }
 .field--err .finput { border-color: #dc2626; }
-.field--err .finput:focus { box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
+.field--err .finput:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
 
 .ferror {
-  font-size: 0.775rem;
+  font-size: 0.75rem;
   color: #dc2626;
   line-height: 1.4;
 }
@@ -426,23 +409,23 @@ function handleSubmit() {
 .combo-wrap {
   display: flex;
   align-items: center;
-  border: 1.5px solid #d1d5db;
-  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
   background: #fff;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   overflow: visible;
 }
 .combo--open .combo-wrap,
 .combo-wrap:focus-within {
   border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26,115,232,0.14);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
 }
 .combo--err .combo-wrap { border-color: #dc2626; }
-.combo--err .combo-wrap:focus-within { box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
+.combo--err .combo-wrap:focus-within { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
 
 .combo-input {
   flex: 1;
-  height: 46px;
+  height: 48px;
   padding: 0 4px 0 14px;
   border: none;
   outline: none;
@@ -465,7 +448,7 @@ function handleSubmit() {
   background: transparent;
   cursor: pointer;
   color: #6b7280;
-  border-radius: 7px;
+  border-radius: 6px;
   margin-right: 4px;
   transition: color 0.12s, background 0.12s;
 }
@@ -477,12 +460,12 @@ function handleSubmit() {
   position: absolute;
   top: calc(100% + 6px);
   left: 0; right: 0;
-  max-height: 240px;
+  max-height: 220px;
   overflow-y: auto;
   background: #fff;
   border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.10);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
   z-index: 9999;
   padding: 4px;
   list-style: none;
@@ -495,7 +478,7 @@ function handleSubmit() {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 0.875rem;
   color: #111827;
   cursor: pointer;
@@ -538,43 +521,214 @@ function handleSubmit() {
   font-style: italic;
 }
 
-.dropdown-enter-active { transition: all 0.18s cubic-bezier(0.16,1,0.3,1); }
+.dropdown-enter-active { transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
 .dropdown-leave-active { transition: all 0.12s ease; }
 .dropdown-enter-from,
 .dropdown-leave-to { opacity: 0; transform: translateY(-6px) scaleY(0.95); transform-origin: top; }
 
-/* ── Submit ── */
+/* ── Submit button ── */
 .btn-start {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  height: 50px;
-  background: linear-gradient(135deg, #1a73e8, #1256b0);
+  gap: 8px;
+  height: 52px;
+  background: #1a73e8;
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-sans);
-  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: opacity 0.12s, transform 0.12s, box-shadow 0.12s;
-  box-shadow: 0 4px 16px rgba(26,115,232,0.42);
-  margin-top: 4px;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+  margin-top: 8px;
 }
 .btn-start:hover:not(:disabled) {
-  opacity: 0.92;
-  transform: translateY(-1px);
-  box-shadow: 0 7px 22px rgba(26,115,232,0.52);
+  background: #1558c0;
+  box-shadow: 0 4px 14px rgba(26, 115, 232, 0.4);
 }
-.btn-start:active:not(:disabled) { transform: scale(0.984); }
-.btn-start:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-start:active:not(:disabled) { transform: scale(0.98); }
+.btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Responsive ── */
-@media (max-width: 480px) {
-  .field-row { grid-template-columns: 1fr; }
-  .card-header { padding: 28px 22px 24px; }
-  .card-body { padding: 24px 20px 28px; }
+/* ───────────────────────────────────────────────
+   RIGHT SIDE — blue gradient, soft Material You
+─────────────────────────────────────────────── */
+.form-right {
+  background: linear-gradient(160deg, #0a1f4e 0%, #1a4fad 55%, #2d7ef5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 52px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft background circles for depth — no hard edges */
+.form-right::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 65%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.form-right::after {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100,180,255,0.12) 0%, transparent 70%);
+  bottom: -60px;
+  right: -60px;
+  pointer-events: none;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* 1. Logo — blur-to-sharp entrance + gentle float loop */
+.welcome-logo-wrap {
+  will-change: transform, opacity, filter;
+  animation: blur-rise 0.9s cubic-bezier(0, 0, 0.2, 1) 0.2s both;
+}
+
+.welcome-logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.28));
+  animation: float 5s ease-in-out 1.2s infinite;
+}
+
+/* 2. Org name — blur-to-sharp, Plus Jakarta Sans */
+.welcome-org {
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  will-change: transform, opacity, filter;
+  animation: blur-rise 0.9s cubic-bezier(0, 0, 0.2, 1) 0.65s both;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* 3. Tagline pill — frosted glass card with typing */
+.welcome-tagline {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  padding: 14px 28px;
+  font-family: 'Plus Jakarta Sans', var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  min-height: 3.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.01em;
+  will-change: opacity, transform;
+  animation: blur-rise 0.7s cubic-bezier(0, 0, 0.2, 1) 1.2s both;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.typing-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: typing 2s steps(24, end) 1.9s forwards;
+}
+
+.typing-text::after {
+  content: '|';
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 300;
+  animation: blink 0.8s step-end infinite 1.9s;
+}
+
+/* ── Keyframes ── */
+
+/* Blur-to-sharp entrance (Material You recommended) */
+@keyframes blur-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Gentle perpetual float for the logo */
+@keyframes float {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to   { width: 24ch; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Left panel entrance */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ───────────────────────────────────────────────
+   RESPONSIVE
+─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .form-page {
+    grid-template-columns: 1fr;
+  }
+
+  .form-right {
+    display: none;
+  }
+
+  .form-left {
+    height: 100vh;
+    padding: 32px 24px;
+  }
+
+  .form-inner {
+    max-width: 100%;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-title {
+    font-size: 1.5rem;
+  }
 }
 </style>
