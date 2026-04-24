@@ -43,9 +43,12 @@ function inline(text) {
     /(?<=^|[\s(])(https?:\/\/[^\s<>")\]]+)/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer" class="md-link">$1&#8599;</a>',
   )
-  // Bare email addresses (not already inside href="…")
+  // Bare email addresses (not already inside an HTML tag or href="mailto:…")
+  // `:` guards against mailto:addr; `>` guards against addr already in anchor text
+  // (both are safe additions because escapeHtml runs before inline, so raw `>` and `:`
+  // from the original text are encoded as `&gt;` / `&#58;` before we get here)
   text = text.replace(
-    /(?<![="])([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g,
+    /(?<![=":>])([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g,
     '<a href="mailto:$1" class="md-link md-link--email"><strong>$1</strong></a>',
   )
   return text
